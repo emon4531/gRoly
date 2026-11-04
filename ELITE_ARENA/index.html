@@ -1,1 +1,692 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="neon">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CODEX — Guild Glory Bot</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root{--void:#05020a;--bg:#080413;--panel:#0d0720;--panel-2:#130a2b;--panel-3:#1b0f3a;--border:#261548;--border-hi:#3b2270;--txt:#f1ecff;--txt-2:#b3a6d6;--txt-3:#75679c;--a-rgb:255,43,214;--b-rgb:0,240,255;--ok-rgb:182,255,0;--warn-rgb:255,184,0;--bad-rgb:255,59,92;--a:rgb(var(--a-rgb));--b:rgb(var(--b-rgb));--ok:rgb(var(--ok-rgb));--warn:rgb(var(--warn-rgb));--bad:rgb(var(--bad-rgb));--r:14px;--r-sm:9px;--display:'Orbitron',sans-serif;--ui:'Rajdhani',sans-serif;--mono:'JetBrains Mono',monospace;}
+html[data-theme="blood"]{--void:#090203;--bg:#0f0405;--panel:#1a0709;--panel-2:#240a0d;--panel-3:#300e12;--border:#4a151b;--border-hi:#6e1f28;--a-rgb:255,34,52;--b-rgb:255,138,0;}
+html[data-theme="matrix"]{--void:#010603;--bg:#020b05;--panel:#04140a;--panel-2:#071d0f;--panel-3:#0a2814;--border:#0f3a1d;--border-hi:#17572b;--a-rgb:0,255,102;--b-rgb:160,255,0;--ok-rgb:0,255,170;}
+html[data-theme="ice"]{--void:#02060c;--bg:#040c18;--panel:#071427;--panel-2:#0a1c36;--panel-3:#0f2748;--border:#143258;--border-hi:#1f4a82;--a-rgb:56,189,255;--b-rgb:170,120,255;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--ui);background:var(--void);color:var(--txt);font-size:15px;line-height:1.45;min-height:100vh;padding:20px 20px 60px;position:relative;}
+body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;background:radial-gradient(ellipse 70% 45% at 50% -10%,rgba(var(--a-rgb),.22),transparent 62%),radial-gradient(ellipse 45% 40% at 100% 100%,rgba(var(--b-rgb),.12),transparent 60%);}
+.container{max-width:1440px;margin:0 auto;}
+button{font-family:inherit;}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;padding:16px 22px;margin-bottom:16px;background:linear-gradient(180deg,var(--panel),var(--bg));border:1px solid var(--border-hi);border-radius:var(--r);}
+.topbar::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--a),var(--b),transparent);animation:slide 3s ease-in-out infinite;background-size:60% 100%;background-repeat:no-repeat;}
+@keyframes slide{0%{background-position:-60% 0;}100%{background-position:160% 0;}}
+.brand{display:flex;align-items:center;gap:14px;}
+.logo{position:relative;width:50px;height:50px;border-radius:12px;display:grid;place-items:center;font-family:var(--display);font-weight:900;font-size:22px;color:#fff;background:conic-gradient(from 180deg,var(--a),var(--b),var(--a));box-shadow:0 0 24px -4px rgba(var(--a-rgb),.9);}
+.logo span{position:absolute;inset:3px;border-radius:10px;background:var(--void);display:grid;place-items:center;}
+.logo b{background:linear-gradient(135deg,var(--a),var(--b));-webkit-background-clip:text;background-clip:text;color:transparent;}
+.glitch{font-family:var(--display);font-weight:900;font-size:24px;letter-spacing:.06em;color:var(--txt);text-shadow:0 0 18px rgba(var(--a-rgb),.7);}
+.tagline{font-size:12.5px;color:var(--txt-3);margin-top:2px;display:flex;align-items:center;gap:10px;font-weight:500;}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-size:11.5px;font-weight:700;letter-spacing:.05em;border:1px solid var(--border-hi);background:rgba(255,255,255,.03);}
+.pill i{font-size:7px;}
+.pill.live{color:var(--ok);border-color:rgba(var(--ok-rgb),.4);background:rgba(var(--ok-rgb),.08);}
+.pill.live i{animation:blink 1.4s infinite;}
+.pill.off{color:var(--bad);border-color:rgba(var(--bad-rgb),.45);background:rgba(var(--bad-rgb),.08);}
+@keyframes blink{50%{opacity:.25;}}
+.clock{font-family:var(--mono);font-size:11.5px;color:var(--txt-2);}
+.actions{display:flex;gap:8px;flex-wrap:wrap;}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:var(--r-sm);font-size:13.5px;font-weight:700;letter-spacing:.03em;cursor:pointer;border:1px solid transparent;transition:all .18s;white-space:nowrap;color:var(--txt);}
+.btn i{font-size:11px;}
+.btn-ghost{background:rgba(255,255,255,.02);color:var(--txt-2);border-color:var(--border-hi);}
+.btn-ghost:hover{background:var(--panel-3);color:var(--txt);border-color:var(--a);}
+.btn-primary{background:linear-gradient(135deg,var(--a),rgba(var(--a-rgb),.55) 55%,var(--b));color:#fff;box-shadow:0 6px 20px -6px rgba(var(--a-rgb),.9);}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 10px 26px -6px rgba(var(--a-rgb),1);}
+.btn-ok{background:linear-gradient(135deg,var(--ok),rgba(var(--ok-rgb),.6) 55%,var(--b));color:#0a1a02;box-shadow:0 6px 20px -6px rgba(var(--ok-rgb),.9);}
+.btn-ok:hover{transform:translateY(-1px);}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
+@media(max-width:1000px){.stats{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:520px){.stats{grid-template-columns:1fr;}}
+.stat{background:linear-gradient(180deg,var(--panel),var(--bg));border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:6px;transition:all .25s;}
+.stat:hover{border-color:var(--a);transform:translateY(-2px);}
+.stat-head{display:flex;align-items:center;justify-content:space-between;}
+.stat-label{font-size:11.5px;font-weight:700;color:var(--txt-3);letter-spacing:.1em;text-transform:uppercase;}
+.stat-icon{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-size:12px;background:rgba(var(--a-rgb),.14);color:var(--a);}
+.stat-icon.b{background:rgba(var(--b-rgb),.14);color:var(--b);}
+.stat-icon.ok{background:rgba(var(--ok-rgb),.14);color:var(--ok);}
+.stat-icon.warn{background:rgba(var(--warn-rgb),.14);color:var(--warn);}
+.stat-value{font-family:var(--display);font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.stat-value.mono{font-size:20px;}
+.stat-value .unit{font-family:var(--ui);font-size:12px;font-weight:600;color:var(--txt-3);margin-left:4px;}
+.stat-foot{font-size:11.5px;color:var(--txt-3);}
+.panel{background:linear-gradient(180deg,var(--panel),var(--bg));border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 18px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.012);}
+.panel-title{font-family:var(--display);font-size:12.5px;font-weight:700;letter-spacing:.08em;display:flex;align-items:center;gap:9px;}
+.panel-title i{color:var(--a);}
+.panel-hint{font-size:11.5px;color:var(--txt-3);display:flex;align-items:center;gap:8px;}
+.mb{margin-bottom:16px;}
+.layout{display:grid;grid-template-columns:1.55fr 1fr;gap:16px;align-items:start;margin-bottom:16px;}
+@media(max-width:1100px){.layout{grid-template-columns:1fr;}}
+.guild-panel{padding:20px;}
+.form-row{display:grid;grid-template-columns:2fr 1.2fr;gap:10px;margin-bottom:12px;}
+@media(max-width:600px){.form-row{grid-template-columns:1fr;}}
+.field label{display:block;font-size:11.5px;font-weight:700;color:var(--txt-2);margin-bottom:5px;letter-spacing:.04em;text-transform:uppercase;}
+.input{width:100%;background:var(--void);border:1px solid var(--border-hi);border-radius:var(--r-sm);padding:9px 12px;color:var(--txt);font-size:13.5px;font-family:var(--ui);font-weight:500;outline:none;transition:all .2s;}
+.input:focus{border-color:var(--a);box-shadow:0 0 0 3px rgba(var(--a-rgb),.18);}
+.input::placeholder{color:var(--txt-3);}
+select.input{cursor:pointer;}
+.guild-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;}
+.guild-info{margin-top:16px;padding:16px;border:1px solid var(--border-hi);border-radius:var(--r-sm);background:linear-gradient(135deg,rgba(var(--a-rgb),.08),rgba(var(--b-rgb),.05));}
+.guild-info.empty{text-align:center;color:var(--txt-3);padding:32px 16px;background:transparent;border-style:dashed;}
+.guild-info.empty i{font-size:28px;color:var(--border-hi);display:block;margin-bottom:8px;}
+.guild-name{font-family:var(--display);font-size:18px;font-weight:900;margin-bottom:5px;background:linear-gradient(90deg,var(--a),var(--b));-webkit-background-clip:text;background-clip:text;color:transparent;}
+.guild-meta{display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--txt-3);font-family:var(--mono);margin-bottom:12px;}
+.guild-meta b{color:var(--txt);font-weight:700;}
+.guild-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:7px;overflow:hidden;}
+.guild-cell{background:var(--void);padding:10px 12px;}
+.guild-label{font-size:10px;font-weight:700;color:var(--txt-3);letter-spacing:.09em;text-transform:uppercase;margin-bottom:2px;}
+.guild-value{font-size:14px;font-weight:800;font-family:var(--mono);font-variant-numeric:tabular-nums;}
+.guild-value.xp{color:var(--b);}
+.guild-value.glory{color:var(--ok);}
+.guild-value.warn{color:var(--warn);}
+.chart-wrap{padding:12px 16px 8px;}
+#chart{width:100%;height:150px;display:block;}
+.chart-meta{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--txt-3);padding:0 18px 12px;font-family:var(--mono);}
+.chart-meta b{color:var(--b);font-weight:700;}
+.logs-tools{display:flex;gap:7px;flex-wrap:wrap;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border);}
+.chips{display:flex;gap:5px;flex-wrap:wrap;}
+.chip{padding:4px 10px;border-radius:99px;font-size:11.5px;font-weight:700;letter-spacing:.05em;cursor:pointer;border:1px solid var(--border-hi);background:transparent;color:var(--txt-3);transition:all .18s;}
+.chip:hover{color:var(--txt);border-color:var(--a);}
+.chip.on{background:rgba(var(--a-rgb),.18);color:var(--txt);border-color:var(--a);}
+.logs-stream{height:380px;overflow-y:auto;padding:10px 14px;font-family:var(--mono);font-size:11.5px;line-height:1.7;background:var(--void);}
+.logs-stream::-webkit-scrollbar{width:7px;}
+.logs-stream::-webkit-scrollbar-thumb{background:var(--border-hi);border-radius:4px;}
+.log-line{display:flex;gap:8px;padding:1px 0;word-break:break-word;}
+.log-ts{color:var(--txt-3);flex-shrink:0;}
+.log-msg{color:var(--txt-2);}
+.log-msg.info{color:rgb(var(--b-rgb));}
+.log-msg.success{color:var(--ok);}
+.log-msg.warning{color:var(--warn);}
+.log-msg.error{color:var(--bad);}
+.launch-list{max-height:300px;overflow-y:auto;padding:10px 14px;}
+.launch-item{display:flex;gap:9px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border);}
+.launch-item:last-child{border-bottom:0;}
+.launch-icon{width:26px;height:26px;border-radius:6px;display:grid;place-items:center;font-size:10.5px;flex-shrink:0;}
+.launch-icon.ok{background:rgba(var(--ok-rgb),.15);color:var(--ok);}
+.launch-icon.fail{background:rgba(var(--bad-rgb),.15);color:var(--bad);}
+.launch-body{min-width:0;flex:1;}
+.launch-title{font-size:12.5px;font-weight:700;}
+.launch-meta{font-size:11px;color:var(--txt-3);font-family:var(--mono);margin-top:2px;}
+.accounts{padding:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px;}
+.account{position:relative;padding:12px 14px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--panel-2);overflow:hidden;transition:all .25s;}
+.account::after{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--a),var(--b));}
+.account:hover{border-color:var(--a);transform:translateY(-2px);}
+.acc-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;}
+.acc-id{display:flex;align-items:center;gap:9px;min-width:0;}
+.acc-avatar{width:34px;height:34px;border-radius:9px;flex-shrink:0;display:grid;place-items:center;font-size:12px;color:var(--a);background:linear-gradient(135deg,var(--panel-3),var(--border-hi));border:1px solid var(--border-hi);position:relative;}
+.acc-avatar::after{content:"";position:absolute;right:-3px;bottom:-3px;width:9px;height:9px;border-radius:50%;background:var(--ok);border:2px solid var(--panel-2);}
+.acc-name{font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.acc-uid{font-size:11px;color:var(--txt-3);font-family:var(--mono);margin-top:1px;cursor:pointer;}
+.acc-uid:hover{color:var(--b);}
+.acc-info{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:5px;overflow:hidden;}
+.acc-cell{background:var(--void);padding:6px 8px;}
+.acc-cell-label{font-size:9px;font-weight:700;color:var(--txt-3);letter-spacing:.09em;text-transform:uppercase;margin-bottom:1px;}
+.acc-cell-value{font-size:11px;font-weight:700;font-family:var(--mono);}
+.status{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:5px;}
+.status::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor;}
+.status.online{background:rgba(var(--ok-rgb),.1);color:var(--ok);}
+.status.match{background:rgba(var(--a-rgb),.14);color:var(--a);}
+.status.searching{background:rgba(var(--warn-rgb),.1);color:var(--warn);}
+.status.error{background:rgba(var(--bad-rgb),.12);color:var(--bad);}
+.status.paused{background:rgba(var(--warn-rgb),.1);color:var(--warn);}
+.status.connecting{background:rgba(255,255,255,.05);color:var(--txt-2);}
+.empty{padding:40px 20px;text-align:center;color:var(--txt-3);grid-column:1 / -1;}
+.empty i{font-size:32px;color:var(--border-hi);display:block;margin-bottom:10px;}
+.toasts{position:fixed;right:16px;top:16px;z-index:200;display:flex;flex-direction:column;gap:8px;pointer-events:none;}
+.toast{pointer-events:auto;min-width:230px;max-width:330px;padding:11px 14px;border-radius:10px;background:var(--panel-2);border:1px solid var(--border-hi);border-left:3px solid var(--a);box-shadow:0 12px 36px -10px #000;font-weight:600;display:flex;gap:9px;align-items:flex-start;animation:tin .3s;}
+.toast.ok{border-left-color:var(--ok);}.toast.err{border-left-color:var(--bad);}.toast.warn{border-left-color:var(--warn);}
+.toast i{margin-top:2px;}
+.toast.out{animation:tout .3s forwards;}
+@keyframes tin{from{opacity:0;transform:translateX(30px);}}
+@keyframes tout{to{opacity:0;transform:translateX(30px);}}
+.wm{position:fixed;bottom:12px;right:16px;font-family:var(--display);font-size:10.5px;letter-spacing:.2em;color:var(--txt-3);pointer-events:none;user-select:none;opacity:.75;}
+.wm b{color:var(--a);margin-left:4px;}
+@media(max-width:640px){body{padding:10px 10px 50px;}.glitch{font-size:19px;}.guild-grid{grid-template-columns:repeat(2,1fr);}}
+</style>
+</head>
+<body>
+<div class="toasts" id="toasts"></div>
+<div class="container">
+  <div class="topbar" style="position:relative;">
+    <div class="brand">
+      <div class="logo"><span><b>C</b></span></div>
+      <div>
+        <div class="glitch">CODEX</div>
+        <div class="tagline">
+          <span>Guild Glory Bot</span>
+          <span class="pill live" id="conn-pill"><i class="fa-solid fa-circle"></i><span id="conn-text">LIVE</span></span>
+          <span class="clock" id="clock">--:--:--</span>
+        </div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-ghost" onclick="cycleTheme()"><i class="fa-solid fa-palette"></i></button>
+      <button class="btn btn-ghost" onclick="refreshAll()"><i class="fa-solid fa-rotate"></i> Refresh</button>
+    </div>
+  </div>
 
+  <div class="stats">
+    <div class="stat"><div class="stat-head"><span class="stat-label">Bot Accounts</span><span class="stat-icon"><i class="fa-solid fa-robot"></i></span></div><div class="stat-value" id="stat-accounts">0</div><div class="stat-foot">Available for raids</div></div>
+    <div class="stat"><div class="stat-head"><span class="stat-label">In Match</span><span class="stat-icon b"><i class="fa-solid fa-crosshairs"></i></span></div><div class="stat-value" id="stat-inmatch">0</div><div class="stat-foot">Bots fighting now</div></div>
+    <div class="stat"><div class="stat-head"><span class="stat-label">Total Matches</span><span class="stat-icon ok"><i class="fa-solid fa-gamepad"></i></span></div><div class="stat-value" id="stat-matches">0</div><div class="stat-foot">All bots combined</div></div>
+    <div class="stat"><div class="stat-head"><span class="stat-label">Uptime</span><span class="stat-icon warn"><i class="fa-solid fa-clock"></i></span></div><div class="stat-value mono" id="stat-uptime">00:00:00</div><div class="stat-foot">Session runtime</div></div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-head"><span class="stat-label">Guild XP</span><span class="stat-icon b"><i class="fa-solid fa-trophy"></i></span></div><div class="stat-value mono" id="stat-guild-xp">—</div><div class="stat-foot">Total accumulated</div></div>
+    <div class="stat"><div class="stat-head"><span class="stat-label">Glory Gained</span><span class="stat-icon ok"><i class="fa-solid fa-arrow-trend-up"></i></span></div><div class="stat-value" id="stat-glory">—</div><div class="stat-foot">Since baseline</div></div>
+    <div class="stat"><div class="stat-head"><span class="stat-label">Glory / Hour</span><span class="stat-icon ok"><i class="fa-solid fa-bolt"></i></span></div><div class="stat-value" id="stat-rate">—</div><div class="stat-foot">Live rate (15m window)</div></div>
+    <div class="stat"><div class="stat-head"><span class="stat-label">Glory 5m</span><span class="stat-icon warn"><i class="fa-solid fa-fire"></i></span></div><div class="stat-value" id="stat-g5m">—</div><div class="stat-foot">Last 5 minutes</div></div>
+  </div>
+
+  <div class="layout">
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title"><i class="fa-solid fa-bullseye"></i><span>TARGET GUILD</span></div>
+        <div class="panel-hint" id="guild-hint">Enter clan ID to begin</div>
+      </div>
+      <div class="guild-panel">
+        <div class="form-row">
+          <div class="field"><label>Clan ID</label><input class="input" id="guild-id" placeholder="e.g. 3105712089" autocomplete="off"></div>
+          <div class="field"><label>Region</label><select class="input" id="guild-region"></select></div>
+        </div>
+        <div class="guild-actions">
+          <button class="btn btn-primary" id="btn-lookup" onclick="lookupGuild()"><i class="fa-solid fa-magnifying-glass"></i> Lookup Guild</button>
+          <button class="btn btn-ok" id="btn-launch" onclick="launchRaid()"><i class="fa-solid fa-rocket"></i> Launch Raid</button>
+          <button class="btn btn-ghost" id="btn-autocreate" onclick="autoCreateBots()"><i class="fa-solid fa-user-plus"></i> Auto-Create 4 Bots</button>
+          <button class="btn btn-ghost" id="btn-farm" onclick="startFarm()"><i class="fa-solid fa-seedling"></i> Start Farm</button>
+        </div>
+        <div class="guild-info empty" id="guild-info">
+          <i class="fa-solid fa-trophy"></i>
+          <div>No guild loaded yet. Enter a clan ID and click Lookup.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title"><i class="fa-solid fa-terminal"></i><span>ACTIVITY LOG</span></div>
+        <div class="panel-hint"><span id="log-count">0</span> lines</div>
+      </div>
+      <div class="logs-tools">
+        <div class="chips" id="log-chips">
+          <button class="chip on" data-l="all">ALL</button>
+          <button class="chip" data-l="info">INFO</button>
+          <button class="chip" data-l="success">OK</button>
+          <button class="chip" data-l="warning">WARN</button>
+          <button class="chip" data-l="error">ERR</button>
+        </div>
+        <button class="btn btn-ghost" onclick="clearLogs()" style="padding:5px 9px;font-size:11px;margin-left:auto"><i class="fa-regular fa-trash-can"></i></button>
+      </div>
+      <div class="logs-stream" id="log-stream"></div>
+    </div>
+  </div>
+
+  <div class="panel mb">
+    <div class="panel-head">
+      <div class="panel-title"><i class="fa-solid fa-chart-line"></i><span>GLORY TIMELINE</span></div>
+      <div class="panel-hint"><span id="chart-range">waiting for data…</span></div>
+    </div>
+    <div class="chart-wrap"><canvas id="chart"></canvas></div>
+    <div class="chart-meta">
+      <span>peak <b id="ch-peak">0</b></span>
+      <span>current <b id="ch-last">0</b></span>
+      <span>samples <b id="ch-pts">0</b></span>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title"><i class="fa-solid fa-rocket"></i><span>RAID HISTORY</span></div>
+        <div class="panel-hint"><span id="launch-count">0</span> raids</div>
+      </div>
+      <div class="launch-list" id="launch-list">
+        <div class="empty"><i class="fa-solid fa-rocket"></i><p>No raids launched yet</p></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title"><i class="fa-solid fa-robot"></i><span>BOT FLEET</span></div>
+        <div class="panel-hint" id="acc-count-hint">—</div>
+      </div>
+      <div class="logs-tools">
+        <div class="search" style="flex:1;position:relative;">
+          <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--txt-3);"></i>
+          <input class="input" id="acc-search" placeholder="Search" style="padding-left:30px;">
+        </div>
+        <select class="input" id="acc-region-filter" style="width:auto;">
+          <option value="ALL">All regions</option>
+        </select>
+      </div>
+      <div class="accounts" id="accounts-container">
+        <div class="empty"><i class="fa-solid fa-circle-notch fa-spin"></i><p>Loading bots…</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="wm">DESIGNED BY<b>CODEX</b></div>
+
+<script>
+const API_KEY = 'XEROX_MODS';
+const REGIONS = ['IND','BD','ME','ID','PK','VN','TH','SG','BR','US','NA','SAC','RU','TW','CIS'];
+const THEMES = ['neon','blood','matrix','ice'];
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const store = {get(k,d){try{const v=localStorage.getItem('codex_'+k);return v===null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem('codex_'+k,JSON.stringify(v));}catch(e){}}};
+const esc = t => t==null?'':String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const fmt = n => Math.round(n||0).toLocaleString();
+const pad = n => String(n).padStart(2,'0');
+
+const S = {
+  theme: store.get('theme','neon'),
+  clanId: store.get('clanId',''),
+  region: store.get('region','BD'),
+  guildInfo: null,
+  guildHistory: store.get('guildHistory',[]),
+  baselineXp: store.get('baselineXp', null),
+  accounts: [], query: '', regionFilter: 'ALL',
+  logs: [], logsInit: false, lastLogCount: 0, logLevel: 'all',
+  launches: store.get('launches', []),
+  totalLaunches: store.get('totalLaunches', 0),
+  start: Date.now(), serverUptimeBase: null, serverUptimeAt: 0,
+  isFetching: false, isLaunching: false,
+};
+
+function toast(msg, kind='info', ms=3400){
+  const icons = {ok:'fa-circle-check',err:'fa-triangle-exclamation',warn:'fa-circle-exclamation',info:'fa-bolt'};
+  const el = document.createElement('div');
+  el.className = 'toast ' + kind;
+  el.innerHTML = `<i class="fa-solid ${icons[kind]||icons.info}"></i><span>${esc(msg)}</span>`;
+  $('#toasts').appendChild(el);
+  setTimeout(()=>{el.classList.add('out');setTimeout(()=>el.remove(),300);}, ms);
+}
+
+function applyTheme(){document.documentElement.setAttribute('data-theme',S.theme);store.set('theme',S.theme);drawChart();}
+function cycleTheme(){S.theme=THEMES[(THEMES.indexOf(S.theme)+1)%THEMES.length];applyTheme();toast('Theme: '+S.theme.toUpperCase(),'info',1400);}
+
+async function apiGuildInfo(cid, reg){
+  const r = await fetch(`/api/guildinfo?guild_id=${encodeURIComponent(cid)}&region=${encodeURIComponent(reg)}&key=${API_KEY}`);
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return await r.json();
+}
+async function apiClanJoin(cid){
+  const r = await fetch('/api/clanjoin', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({clan_id:cid})});
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return await r.json();
+}
+async function apiStats(){
+  const r = await fetch('/api/stats', {cache:'no-store'});
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return await r.json();
+}
+async function apiCreateTeam(region, clanId){
+  const r = await fetch('/api/create_team', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({region, clan_id:clanId, count:4, password:'ANON'})});
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return await r.json();
+}
+
+async function lookupGuild(quiet){
+  const cid = ($('#guild-id').value||'').trim();
+  const reg = $('#guild-region').value;
+  if(!cid){ if(!quiet) toast('Enter clan ID','warn'); return; }
+  if(!/^\d+$/.test(cid)){ if(!quiet) toast('Clan ID must be numeric','err'); return; }
+  store.set('clanId', cid); store.set('region', reg);
+  const btn = $('#btn-lookup');
+  if(!quiet){ btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-circle-notch fa-spin"></i>'; }
+  $('#guild-hint').textContent = 'Fetching…';
+  try{
+    const res = await apiGuildInfo(cid, reg);
+    if(res.status !== 'success') throw new Error(res.error || 'Lookup failed');
+    const info = res.api_response?.clan_basic_info;
+    if(!info) throw new Error('Empty clan info');
+    S.guildInfo = info;
+    const xp = Number(info['Total guild xp'] || info.xp || 0);
+    const storedClan = store.get('baselineClan', null);
+    if(storedClan !== cid || S.baselineXp == null){
+      S.baselineXp = xp;
+      store.set('baselineXp', xp); store.set('baselineClan', cid);
+      S.guildHistory = [{t: Date.now(), xp}];
+    } else {
+      S.guildHistory.push({t: Date.now(), xp});
+      S.guildHistory = S.guildHistory.slice(-240);
+    }
+    store.set('guildHistory', S.guildHistory);
+    renderGuildInfo(); renderGuildStats(); drawChart();
+    $('#guild-hint').textContent = 'Updated ' + new Date().toLocaleTimeString();
+    if(!quiet) toast('Loaded: ' + (info.clan_name || cid), 'ok');
+  }catch(err){
+    $('#guild-hint').textContent = 'Lookup failed';
+    if(!quiet) toast('Lookup failed: ' + err.message, 'err');
+  }finally{
+    if(!quiet){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-magnifying-glass"></i> Lookup Guild'; }
+  }
+}
+
+async function launchRaid(){
+  const cid = ($('#guild-id').value||'').trim();
+  const reg = $('#guild-region').value;
+  if(!cid){ toast('Enter clan ID','warn'); return; }
+  if(S.isLaunching) return;
+  S.isLaunching = true;
+  const btn = $('#btn-launch');
+  btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-circle-notch fa-spin"></i>';
+  const launch = {clan:cid, region:reg, ts:Date.now(), ok:false, msg:''};
+  try{
+    const res = await apiClanJoin(cid);
+    launch.ok = true; launch.msg = res.message || 'Sent';
+    toast(launch.msg, 'ok');
+  }catch(err){
+    launch.msg = err.message;
+    toast('Failed: '+err.message, 'err');
+  }finally{
+    S.isLaunching = false;
+    btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-rocket"></i> Launch Raid';
+    S.launches.unshift(launch); S.launches = S.launches.slice(0,40);
+    S.totalLaunches = (S.totalLaunches||0)+1;
+    store.set('launches', S.launches); store.set('totalLaunches', S.totalLaunches);
+    renderLaunches();
+    setTimeout(()=>pollStats(), 3000);
+  }
+}
+
+async function autoCreateBots(){
+  const cid = ($('#guild-id').value||'').trim();
+  const reg = $('#guild-region').value;
+  if(!cid){ toast('Enter clan ID first','warn'); return; }
+  const btn = $('#btn-autocreate');
+  btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-circle-notch fa-spin"></i> Creating…';
+  try{
+    const j = await apiCreateTeam(reg, cid);
+    if(j.ok) toast('Creating 4 bots in ' + reg, 'ok');
+    else toast('Failed: ' + (j.error||'unknown'), 'err');
+  }catch(err){
+    toast('Failed: '+err.message, 'err');
+  }finally{
+    btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-user-plus"></i> Auto-Create 4 Bots';
+  }
+}
+
+async function startFarm(){
+  try{
+    const stats = await apiStats();
+    toast(`${stats.total_accounts} bots active, ${stats.total_matches_started} matches started`, 'info', 4000);
+  }catch(err){ toast('Failed: '+err.message, 'err'); }
+}
+
+function renderGuildInfo(){
+  const box = $('#guild-info'), g = S.guildInfo;
+  if(!g){
+    box.className = 'guild-info empty';
+    box.innerHTML = '<i class="fa-solid fa-trophy"></i><div>No guild loaded yet.</div>';
+    return;
+  }
+  box.className = 'guild-info';
+  const xp = Number(g['Total guild xp'] || g.xp || 0);
+  const gained = (S.baselineXp != null) ? Math.max(0, xp - S.baselineXp) : 0;
+  box.innerHTML = `
+    <div class="guild-name">${esc(g.clan_name||'Unknown')}</div>
+    <div class="guild-meta">
+      <span>ID <b>${esc(g.clan_id||S.clanId)}</b></span>
+      <span>Region <b>${esc(g.region||$('#guild-region').value)}</b></span>
+      <span>Updated <b>${new Date().toLocaleTimeString()}</b></span>
+    </div>
+    <div class="guild-grid">
+      <div class="guild-cell"><div class="guild-label">Guild XP</div><div class="guild-value xp">${fmt(xp)}</div></div>
+      <div class="guild-cell"><div class="guild-label">Glory Gained</div><div class="guild-value glory">+${fmt(gained)}</div></div>
+      <div class="guild-cell"><div class="guild-label">Level</div><div class="guild-value warn">${esc(g.clan_level??'—')}</div></div>
+      <div class="guild-cell"><div class="guild-label">Members</div><div class="guild-value">${g.current_members??0} / ${g.max_members??0}</div></div>
+    </div>`;
+}
+
+function renderGuildStats(){
+  const g = S.guildInfo;
+  if(!g){ ['guild-xp','glory','rate','g5m'].forEach(k=>$('#stat-'+k).textContent='—'); return; }
+  const xp = Number(g['Total guild xp'] || g.xp || 0);
+  const gained = (S.baselineXp != null) ? Math.max(0, xp - S.baselineXp) : 0;
+  $('#stat-guild-xp').textContent = fmt(xp);
+  $('#stat-glory').innerHTML = '+' + fmt(gained);
+
+  // rate from history
+  const h = S.guildHistory;
+  let rate = 0, g5m = 0;
+  if(h.length >= 2){
+    const now = Date.now();
+    const last = h[h.length-1];
+    const ref = h.find(p => now - p.t <= 900000) || h[0];
+    const dtH = Math.max((last.t - ref.t)/3600000, 0.01);
+    rate = Math.round((last.xp - ref.xp) / dtH);
+    const ref5 = h.find(p => now - p.t <= 300000) || last;
+    g5m = Math.max(0, last.xp - ref5.xp);
+  }
+  $('#stat-rate').innerHTML = rate > 0 ? '+' + fmt(rate) + '<span class="unit">/h</span>' : '0';
+  $('#stat-g5m').innerHTML = '+' + fmt(g5m);
+}
+
+function statusClass(s){
+  s = String(s||'ONLINE').toUpperCase();
+  if(s.indexOf('IN_MATCH')>=0) return 'match';
+  if(s==='SEARCHING') return 'searching';
+  if(s==='ERROR') return 'error';
+  if(s==='PAUSED') return 'paused';
+  if(s==='CONNECTING') return 'connecting';
+  return 'online';
+}
+function statusText(a){
+  const s = String(a.status||'ONLINE').toUpperCase();
+  if(s.indexOf('IN_MATCH')>=0) return 'In Match';
+  if(s==='PAUSED') return 'Paused';
+  return s.charAt(0)+s.slice(1).toLowerCase();
+}
+
+function renderAccounts(){
+  const q = S.query.toLowerCase();
+  let list = S.accounts.slice();
+  if(S.regionFilter !== 'ALL') list = list.filter(a => String(a.region||'').toUpperCase() === S.regionFilter);
+  if(q) list = list.filter(a => String(a.nickname||'').toLowerCase().includes(q) || String(a.uid||'').includes(q));
+  const box = $('#accounts-container');
+  $('#acc-count-hint').textContent = `${list.length} / ${S.accounts.length} bots`;
+  const rf = $('#acc-region-filter');
+  const rs = new Set(S.accounts.map(a => String(a.region||'IND').toUpperCase()));
+  rf.innerHTML = '<option value="ALL">All regions</option>' + [...rs].sort().map(r=>`<option value="${r}">${r}</option>`).join('');
+  rf.value = S.regionFilter;
+  if(!list.length){
+    box.innerHTML = `<div class="empty"><i class="fa-regular fa-folder-open"></i><p>${S.accounts.length?'No matches':'No bot accounts yet'}</p></div>`;
+    return;
+  }
+  box.innerHTML = list.map(a => {
+    const uid = esc(a.uid), nick = esc(a.nickname||'Unknown'), region = esc(a.region||'IND');
+    const lvl = a.level||1, status = statusClass(a.status), statusT = esc(statusText(a));
+    return `<div class="account" data-uid="${uid}">
+      <div class="acc-row">
+        <div class="acc-id">
+          <div class="acc-avatar"><i class="fa-solid fa-robot"></i></div>
+          <div style="min-width:0">
+            <div class="acc-name">${nick}</div>
+            <div class="acc-uid" data-copy="${uid}">${uid} · ${region}</div>
+          </div>
+        </div>
+        <span class="status ${status}">${statusT}</span>
+      </div>
+      <div class="acc-info">
+        <div class="acc-cell"><div class="acc-cell-label">Level</div><div class="acc-cell-value">${lvl}</div></div>
+        <div class="acc-cell"><div class="acc-cell-label">EXP</div><div class="acc-cell-value">${fmt(a.current_exp||a.exp||0)}</div></div>
+        <div class="acc-cell"><div class="acc-cell-label">Gained</div><div class="acc-cell-value">+${fmt(a.gained_exp||0)}</div></div>
+      </div>
+    </div>`;
+  }).join('');
+  box.querySelectorAll('[data-copy]').forEach(el => {
+    el.addEventListener('click', () => {
+      const t = el.dataset.copy;
+      if(navigator.clipboard) navigator.clipboard.writeText(t).then(()=>toast('Copied '+t,'ok',1200));
+    });
+  });
+}
+
+function renderLaunches(){
+  const box = $('#launch-list'), list = S.launches||[];
+  $('#launch-count').textContent = list.length;
+  if(!list.length){ box.innerHTML = '<div class="empty"><i class="fa-solid fa-rocket"></i><p>No raids yet</p></div>'; return; }
+  box.innerHTML = list.map(l => {
+    const cls = l.ok?'ok':'fail', icon = l.ok?'fa-check':'fa-xmark';
+    const dt = new Date(l.ts);
+    const time = `${pad(dt.getHours())}:${pad(dt.getMinutes())}:${pad(dt.getSeconds())}`;
+    return `<div class="launch-item">
+      <div class="launch-icon ${cls}"><i class="fa-solid ${icon}"></i></div>
+      <div class="launch-body">
+        <div class="launch-title">Clan ${esc(l.clan)} · ${esc(l.region)}</div>
+        <div class="launch-meta">${time} · ${esc(l.msg||'')}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function logEl(l){
+  const d = document.createElement('div'); d.className='log-line';
+  d.innerHTML = `<span class="log-ts">${esc(l.time||'')}</span><span class="log-msg ${esc(l.level||'info')}">${esc(l.message||'')}</span>`;
+  return d;
+}
+function logPass(l){ return S.logLevel==='all' || l.level===S.logLevel; }
+function ingestLogs(logs){
+  const box = $('#log-stream'), total = logs.length;
+  if(total < S.lastLogCount || !S.logsInit){
+    S.logs = logs.slice(); S.logsInit = true; S.lastLogCount = total;
+    box.innerHTML = '';
+    const frag = document.createDocumentFragment();
+    S.logs.filter(logPass).forEach(l=>frag.appendChild(logEl(l)));
+    box.appendChild(frag); box.scrollTop = box.scrollHeight;
+    $('#log-count').textContent = S.logs.length;
+    return;
+  }
+  if(total > S.lastLogCount){
+    const fresh = logs.slice(S.lastLogCount);
+    S.logs.push(...fresh); S.lastLogCount = total;
+    const frag = document.createDocumentFragment();
+    fresh.filter(logPass).forEach(l=>frag.appendChild(logEl(l)));
+    box.appendChild(frag); box.scrollTop = box.scrollHeight;
+    while(box.children.length > 600) box.removeChild(box.firstChild);
+    $('#log-count').textContent = S.logs.length;
+  }
+}
+async function clearLogs(){
+  try{ await fetch('/api/logs/clear',{method:'POST'}); }catch(e){}
+  S.logs=[]; $('#log-stream').innerHTML=''; $('#log-count').textContent=0;
+  toast('Logs cleared','info',1200);
+}
+
+function drawChart(){
+  const c = $('#chart'); if(!c) return;
+  const dpr = window.devicePixelRatio||1, w = c.clientWidth, h = c.clientHeight;
+  c.width = w*dpr; c.height = h*dpr;
+  const x = c.getContext('2d'); x.scale(dpr,dpr); x.clearRect(0,0,w,h);
+  const cs = getComputedStyle(document.documentElement);
+  const A = cs.getPropertyValue('--a-rgb').trim(), B = cs.getPropertyValue('--b-rgb').trim();
+  const pts = S.guildHistory;
+  x.strokeStyle = 'rgba(255,255,255,.05)'; x.lineWidth = 1;
+  for(let i=1;i<4;i++){ x.beginPath(); x.moveTo(0,h*i/4); x.lineTo(w,h*i/4); x.stroke(); }
+  if(pts.length < 2){
+    x.fillStyle = `rgba(${B},.6)`; x.font = '12px JetBrains Mono, monospace';
+    x.fillText(S.guildInfo ? 'waiting for samples…' : 'lookup a guild to begin', 12, h/2);
+    $('#ch-pts').textContent = pts.length;
+    return;
+  }
+  const vals = pts.map(p=>p.xp);
+  const max = Math.max(...vals), min = Math.min(...vals);
+  const span = Math.max(max-min, 1);
+  const X = i => 8 + (w-16) * i/(pts.length-1), Y = v => h-8-(h-16) * (v-min)/span;
+  const grad = x.createLinearGradient(0,0,0,h); grad.addColorStop(0,`rgba(${A},.45)`); grad.addColorStop(1,`rgba(${A},0)`);
+  x.beginPath(); pts.forEach((p,i)=> i ? x.lineTo(X(i),Y(p.xp)) : x.moveTo(X(i),Y(p.xp)));
+  x.lineTo(X(pts.length-1),h); x.lineTo(X(0),h); x.closePath(); x.fillStyle = grad; x.fill();
+  const lg = x.createLinearGradient(0,0,w,0); lg.addColorStop(0,`rgb(${A})`); lg.addColorStop(1,`rgb(${B})`);
+  x.beginPath(); pts.forEach((p,i)=> i ? x.lineTo(X(i),Y(p.xp)) : x.moveTo(X(i),Y(p.xp)));
+  x.strokeStyle = lg; x.lineWidth = 2.2; x.shadowColor = `rgb(${A})`; x.shadowBlur = 10; x.lineJoin='round'; x.stroke(); x.shadowBlur = 0;
+  const lx = X(pts.length-1), ly = Y(pts[pts.length-1].xp);
+  x.beginPath(); x.arc(lx,ly,4,0,7); x.fillStyle = `rgb(${B})`; x.shadowColor = `rgb(${B})`; x.shadowBlur = 12; x.fill();
+  $('#ch-peak').textContent = fmt(max);
+  $('#ch-last').textContent = fmt(pts[pts.length-1].xp);
+  $('#ch-pts').textContent = pts.length;
+  const mins = Math.round((pts[pts.length-1].t - pts[0].t)/60000);
+  $('#chart-range').textContent = mins<1?'last minute':`last ${mins} min`;
+}
+
+async function pollStats(){
+  if(S.isFetching) return;
+  S.isFetching = true;
+  try{
+    const data = await apiStats();
+    setConn('live');
+    if(typeof data.uptime === 'number'){ S.serverUptimeBase = data.uptime; S.serverUptimeAt = Date.now(); }
+    S.accounts = data.accounts || [];
+    $('#stat-accounts').textContent = data.total_accounts;
+    $('#stat-inmatch').textContent = S.accounts.filter(a=>String(a.status).toUpperCase().includes('IN_MATCH')).length;
+    $('#stat-matches').textContent = data.total_matches_started || data.total_matches || 0;
+    renderAccounts();
+    ingestLogs(data.logs || []);
+  }catch(err){
+    setConn('off');
+  }finally{
+    S.isFetching = false;
+  }
+}
+
+function setConn(state){
+  const p = $('#conn-pill'), t = $('#conn-text');
+  p.className = 'pill ' + (state==='live'?'live':'off');
+  t.textContent = state==='live'?'LIVE':'OFFLINE';
+}
+
+async function refreshAll(){
+  toast('Refreshing…','info',1000);
+  await pollStats();
+  if(S.clanId) await lookupGuild(true);
+  toast('Refreshed','ok',1000);
+}
+
+$('#acc-search').addEventListener('input', e => { S.query = e.target.value.trim(); renderAccounts(); });
+$('#acc-region-filter').addEventListener('change', e => { S.regionFilter = e.target.value; renderAccounts(); });
+$('#log-chips').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if(!b) return;
+  S.logLevel = b.dataset.l;
+  $$('#log-chips .chip').forEach(c => c.classList.toggle('on', c===b));
+  $('#log-stream').innerHTML = '';
+  const frag = document.createDocumentFragment();
+  S.logs.filter(logPass).forEach(l=>frag.appendChild(logEl(l)));
+  $('#log-stream').appendChild(frag);
+});
+$('#guild-id').addEventListener('keydown', e => { if(e.key==='Enter') lookupGuild(); });
+
+setInterval(() => {
+  const sec = (S.serverUptimeBase != null)
+    ? Math.floor(S.serverUptimeBase + (Date.now()-S.serverUptimeAt)/1000)
+    : Math.floor((Date.now()-S.start)/1000);
+  $('#stat-uptime').textContent = `${pad(Math.floor(sec/3600))}:${pad(Math.floor(sec%3600/60))}:${pad(sec%60)}`;
+  const d = new Date();
+  $('#clock').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}, 1000);
+
+function initRegions(){
+  const sel = $('#guild-region');
+  sel.innerHTML = REGIONS.map(r=>`<option value="${r}">${r}</option>`).join('');
+  sel.value = S.region;
+  $('#guild-id').value = S.clanId || '';
+}
+
+function init(){
+  applyTheme(); initRegions(); drawChart();
+  renderLaunches(); renderGuildInfo(); renderGuildStats();
+  pollStats(); setInterval(pollStats, 5000);
+  setInterval(() => { if(S.clanId) lookupGuild(true); }, 30000);
+}
+init();
+</script>
+</body>
+</html>
