@@ -83,10 +83,18 @@ MODE_IDS = {"BR": 1, "CS": CS_MODE_ID}
 MAP_IDS  = {"BR": 1, "CS": 1}
 # DEBUG_PACKETS=1 -> every plaintext server packet is appended to packets_debug.log
 DEBUG_PACKETS = os.environ.get("DEBUG_PACKETS", "0") == "1"
+# UDP diagnostics: a one-line summary per bot every 20 s (always) + sample packets in udp_debug.log
+DEBUG_UDP = os.environ.get("DEBUG_UDP", "1") == "1"
 # SNIFF_MODE=1 -> single-account lobby test: the bot does NOT build its own squad / start matches,
 # it auto-accepts any squad invite (e.g. from your phone) and logs every server packet.
 SNIFF_MODE = os.environ.get("SNIFF_MODE", "0") == "1"
 if SNIFF_MODE: DEBUG_PACKETS = True
+# ---- keep the squad together --------------------------------------------------------------
+# SQUAD_REQUIRE_ALL=1: the leader does NOT start a match until every bot of its squad has joined
+# the lobby (it keeps re-inviting). If someone still has not joined after SQUAD_JOIN_TIMEOUT s,
+# it starts with who is there (so a broken join detection can never block the bot forever).
+SQUAD_REQUIRE_ALL = os.environ.get("SQUAD_REQUIRE_ALL", "1") == "1"
+SQUAD_JOIN_TIMEOUT = 60.0
 
 # ---- Real CS movement (cmd 2001, plaintext, 10 Hz) --------------------------------------
 # Taken from a real CS match capture: 100 consecutive frames (~10 s) of a player running in a
@@ -321,6 +329,7 @@ async def _get_or_assign_squad(uid_str: str) -> str:
             "match_requested": False,
             "match_requested_at": 0,
             "created_at": time.time(),
+            "joined": set(),
         }
         _account_squad[uid_str] = sid
         print_success(f"[SQUAD] {sid} created | leader={uid_str} | 1/{TEAM_SIZE}")
@@ -331,6 +340,16 @@ async def _get_squad_info(sid: str) -> Optional[dict]:
         sq = _squads.get(sid)
         if not sq: return None
         return {**sq, "all_uids": list(sq["all_uids"])}
+
+async def _squad_mark_joined(sid: str, uid: str):
+    async with _squad_lock:
+        sq = _squads.get(sid)
+        if sq is not None: sq.setdefault("joined", set()).add(str(uid))
+
+async def _squad_joined_set(sid: str) -> set:
+    async with _squad_lock:
+        sq = _squads.get(sid)
+        return set(sq.get("joined", ())) if sq else set()
 
 async def _mark_squad_started(sid: str):
     async with _squad_lock:
@@ -1592,28 +1611,49 @@ def _create_clan_payload(clan_id):
     except Exception as e:
         print_error(f"[CLAN] payload: {e}"); return None
 
-async def join_clan(jwt_token, clan_id):
-    if not _CLAN_PB_AVAILABLE: return False
+CLAN_JOIN_WAIT = 3.0     # seconds to wait after the join request before the account starts playing
+
+def _clan_for_uid(uid):
+    """Guild id for an account: its own clan_id in accounts.json, else CLAN_ID_DEFAULT."""
     try:
-        region = _get_region_from_jwt(jwt_token)
-        base_url = _get_region_url(region)
-        url = base_url.rstrip("/") + "/RequestJoinClan"
-        host = base_url.replace("https://","")
-        payload = _create_clan_payload(clan_id)
-        if not payload: return False
-        hdrs = {"Authorization":f"Bearer {jwt_token}",
-            "X-Unity-Version":"2018.4.11f1","X-GA":"v1 1","ReleaseVersion":"OB55",
-            "Content-Type":"application/octet-stream","Host":host,
-            "Connection":"Keep-Alive","Accept-Encoding":"gzip"}
-        ssl_ctx = ssl.create_default_context()
-        ssl_ctx.check_hostname = False; ssl_ctx.verify_mode = ssl.CERT_NONE
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as s:
-            async with s.post(url, headers=hdrs, data=payload, ssl=ssl_ctx) as r:
-                if r.status == 200:
-                    print_success(f"[CLAN] ✅ Join sent for {clan_id}"); return True
-                print_warning(f"[CLAN] Join status {r.status}"); return False
-    except Exception as e:
-        print_error(f"[CLAN] {e}"); return False
+        if os.path.exists(ACCOUNTS_FILE):
+            with open(ACCOUNTS_FILE, "r", encoding="utf-8") as f:
+                for a in (json.load(f) or []):
+                    if isinstance(a, dict) and str(a.get("uid", "")).strip() == str(uid).strip():
+                        c = str(a.get("clan_id", "")).strip()
+                        if c: return c
+    except Exception: pass
+    return str(CLAN_ID_DEFAULT or "").strip()
+
+async def join_clan(jwt_token, clan_id, tries=3, label=""):
+    if not _CLAN_PB_AVAILABLE:
+        print_error("[CLAN] reqClan_pb2 / ReqCLan_pb2.py not found -> cannot send the join request"); return False
+    payload = _create_clan_payload(clan_id)
+    if not payload: return False
+    region = _get_region_from_jwt(jwt_token)
+    base_url = _get_region_url(region)
+    url = base_url.rstrip("/") + "/RequestJoinClan"
+    host = base_url.replace("https://", "")
+    print_info(f"[CLAN] sending join request -> guild {clan_id} {label}")
+    for attempt in range(1, tries + 1):
+        try:
+            hdrs = {"Authorization": f"Bearer {jwt_token}",
+                "X-Unity-Version": "2018.4.11f1", "X-GA": "v1 1", "ReleaseVersion": "OB55",
+                "Content-Type": "application/octet-stream", "Host": host,
+                "Connection": "Keep-Alive", "Accept-Encoding": "gzip"}
+            ssl_ctx = ssl.create_default_context()
+            ssl_ctx.check_hostname = False; ssl_ctx.verify_mode = ssl.CERT_NONE
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as sess:
+                async with sess.post(url, headers=hdrs, data=payload, ssl=ssl_ctx) as r:
+                    body = (await r.read())[:80]
+                    if r.status == 200:
+                        print_success(f"[CLAN] ✅ Join request sent -> guild {clan_id} {label}"); return True
+                    print_warning(f"[CLAN] attempt {attempt}/{tries} status {r.status} {body!r}")
+        except Exception as e:
+            print_error(f"[CLAN] attempt {attempt}/{tries}: {e}")
+        if attempt < tries: await asyncio.sleep(2.0)
+    print_error(f"[CLAN] ❌ join request FAILED for guild {clan_id} {label}")
+    return False
 
 # ==================== TCP ====================
 async def build_tcp_startup_packet(account_id, token, server_time, key, iv, region="ID", typ='OnLine'):
@@ -2023,6 +2063,7 @@ async def play_game(server_ip_port, thunder, sharma, udp_key, match_code,
         ping_task = asyncio.create_task(keepalive_ping(sock, resolved_ip, port, udp_key_bytes, match_code, ping_stop))
         last_activity = time.time()
 
+        _cmd_count = {}; _cmd_samples = {}; _last_summary = [time.time()]
         movement_ctrl = MovementController(
             account_id=account_id, account_region=player_region,
             key=key, iv=iv, tcp_writer=None,
@@ -2059,6 +2100,18 @@ async def play_game(server_ip_port, thunder, sharma, udp_key, match_code,
                     frame = await decode_packet(response, udp_key_bytes, match_code)
                     if frame:
                         ptype = await classify(frame)
+                        try:
+                            _c = frame['cmd']; _cmd_count[_c] = _cmd_count.get(_c, 0) + 1
+                            if DEBUG_UDP and _cmd_samples.get(_c, 0) < 2:
+                                _cmd_samples[_c] = _cmd_samples.get(_c, 0) + 1
+                                with open("udp_debug.log", "a", encoding="utf-8") as _uf:
+                                    _uf.write(f"{time.time():.3f} uid={account_id} mode={GAME_MODE} cmd={_c} len={len(frame.get('content') or b'')} {(frame.get('content') or b'')[:96].hex()}\n")
+                            if time.time() - _last_summary[0] >= 20.0:
+                                _last_summary[0] = time.time()
+                                _mc = movement_ctrl
+                                print_info(f"[UDP] uid={account_id} state={ack_state} rx={dict(sorted(_cmd_count.items()))} "
+                                           f"echo={'yes' if (_mc and _mc.srv_pos) else 'NO'} real_moves_sent={getattr(_mc, '_sent_real', 0)}")
+                        except Exception: pass
                         if frame['cmd'] == 2001:
                             if movement_ctrl is not None:
                                 try: movement_ctrl.note_server_state(frame.get('content') or b"")
@@ -2108,7 +2161,7 @@ async def play_game(server_ip_port, thunder, sharma, udp_key, match_code,
                             _udp_sendto(sock, bytes.fromhex(pkt), (resolved_ip, port))
                         except Exception: pass
                         last_activity = time.time()
-                    if (time.time() - match_start_time) > 25.0:
+                    if (time.time() - match_start_time) > 40.0:
                         print_warning(f"[MATCH #{match_index}] Handshake timeout"); break
                 elif ack_state == "thunder_sharma_sent":
                     if (time.time() - last_activity) > MATCH_IDLE_TIMEOUT:
@@ -2131,8 +2184,6 @@ async def play_game(server_ip_port, thunder, sharma, udp_key, match_code,
             try:
                 bot_state.increment_match(uid_str)
                 print_success(f"[★] Match #{match_index} Complete | UID: {uid_str}")
-                try: await _mark_bot_match_finished(uid_str)
-                except Exception: pass
                 async def _post_exp(uid):
                     try:
                         for wait in (5.0, 8.0, 12.0):
@@ -2141,6 +2192,10 @@ async def play_game(server_ip_port, thunder, sharma, udp_key, match_code,
                     except Exception: pass
                 asyncio.create_task(_post_exp(uid_str))
             except Exception: pass
+        # the bot is out of the match (finished OR failed/timed out): count it, so the next round
+        # (full restart) begins only when ALL bots are out of their matches.
+        try: await _mark_bot_match_finished(uid_str)
+        except Exception: pass
         ping_stop.set()
         if ping_task:
             ping_task.cancel()
@@ -2171,6 +2226,7 @@ async def functional_lone_wolf(addrs, starter_packet, account_region, client_ver
     _team_active = {"flag": True}
     _match_played = {"flag": False}
     _squad_id_ref = {"id": None}
+    _accept_sent = {"t": 0.0}
 
     async def _process_social_packet(raw_bytes, tag="MAIN"):
         try:
@@ -2337,12 +2393,40 @@ async def functional_lone_wolf(addrs, starter_packet, account_region, client_ver
             print_success(f"[TEAM] 🚀 {uid_str} squad {squad_id} ready → match loop")
             try: bot_state.update_status(uid_str, "SEARCHING", 0)
             except Exception: pass
+            await _squad_mark_joined(squad_id, uid_str)
+            _join_wait_start = time.time(); _last_wait_log = [0.0]; _join_warned = [False]
 
             while _team_active["flag"] and not _match_played["flag"]:
                 try:
                     if bot_state.is_paused(uid_str): break
                     sq = await _get_squad_info(squad_id)
                     if not sq or sq["leader"] != uid_str: break
+
+                    if SQUAD_REQUIRE_ALL:
+                        _need = set(sq["all_uids"]); _have = await _squad_joined_set(squad_id)
+                        if not _need <= _have:
+                            if time.time() - _join_wait_start < SQUAD_JOIN_TIMEOUT:
+                                if time.time() - _last_wait_log[0] > 8.0:
+                                    _last_wait_log[0] = time.time()
+                                    print_info(f"[TEAM] ⏳ {squad_id} waiting for members: {len(_have & _need)}/{len(_need)} joined — not starting yet")
+                                for target_uid in other_uids:
+                                    if target_uid in _have: continue
+                                    async with _team_state["lock"]:
+                                        pi = _team_state["peers"].get(target_uid)
+                                    ta = (pi or {}).get("data", {}).get("account_id") or target_uid
+                                    try:
+                                        inv = invite_player_in_team(int(ta), current_key, current_iv, region=account_region)
+                                        if _writer_ref["w"] and not _writer_ref["w"].is_closing():
+                                            _writer_ref["w"].write(inv); await _writer_ref["w"].drain()
+                                    except Exception: pass
+                                await asyncio.sleep(2.0)
+                                continue
+                            elif not _join_warned[0]:
+                                _join_warned[0] = True
+                                print_warning(f"[TEAM] {squad_id} join timeout ({len(_have & _need)}/{len(_need)}) → starting with the members that joined")
+                        elif not _join_warned[0]:
+                            _join_warned[0] = True
+                            print_success(f"[TEAM] ✅ {squad_id} all {len(_need)} members in the lobby → starting match")
 
                     if sq.get("match_requested"):
                         if time.time() - sq.get("match_requested_at", 0) > 20.0:
@@ -2564,6 +2648,14 @@ async def functional_lone_wolf(addrs, starter_packet, account_region, client_ver
                             sq_now = await _get_squad_info(squad_id)
                             _ldr_uid = sq_now["leader"] if sq_now else None
                             inviter = None
+                            try:   # a lobby/team-state event right after our accept = we are in the leader's squad
+                                _evw = dec.get("4") or dec.get(4)
+                                _ev = _evw.get("data") if isinstance(_evw, dict) else _evw
+                                if (_ev in (6, 14, 18) and _accept_sent["t"] and _ldr_uid and _ldr_uid != uid_str
+                                        and time.time() - _accept_sent["t"] < 40.0):
+                                    await _squad_mark_joined(squad_id, uid_str)
+                                    print_success(f"[TEAM] {uid_str} joined squad {squad_id} (event {_ev})")
+                            except Exception: pass
                             async with _team_state["lock"]:
                                 _ldr_info = _team_state["peers"].get(_ldr_uid) if _ldr_uid else None
                             if _ldr_info and not SNIFF_MODE:
@@ -2585,6 +2677,7 @@ async def functional_lone_wolf(addrs, starter_packet, account_region, client_ver
                                                                  game_version=client_version)
                                         if writer and not writer.is_closing():
                                             writer.write(acc); await writer.drain()
+                                        _accept_sent["t"] = time.time()
                                     except Exception as e: print_warning(f"[TEAM] accept: {e}")
                                     await asyncio.sleep(0.4)
                         except Exception as e: print_warning(f"[TEAM] 0500 parse: {e}")
@@ -2874,11 +2967,15 @@ async def run_account_worker(ad, label, region_override=None, clan_override=None
         tcp_chat = await build_tcp_startup_packet(
             ad['account_id'], ad['token'], ad['server_time'],
             ad['aes_ak'], ad['iv_i'], region=reg, typ='ChaT')
-        if clan_override:
+        _clan_use = clan_override or _clan_for_uid(label) or _clan_for_uid(acc_id)
+        if _clan_use:
             try:
                 await asyncio.sleep(1.0)
-                await join_clan(ad['token'], clan_override)
+                await join_clan(ad['token'], _clan_use, label=f"(uid {label})")
+                await asyncio.sleep(CLAN_JOIN_WAIT)
             except Exception as e: print_warning(f"[CLAN] {e}")
+        else:
+            print_warning(f"[CLAN] no guild id for {label} (set clan_id in accounts.json or CLAN_ID_DEFAULT)")
         info_task = asyncio.create_task(informational(
             ad['informational_addrs'], tcp_chat, ad['aes_ak'], ad['iv_i'],
             region=reg, account_id=acc_id, account_data=ad))
